@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "gen.h"
 
+
 AllocationTable* initAllocationTable(){
     AllocationTable* p = (AllocationTable*)malloc(sizeof(AllocationTable));
     if (p == NULL) { // no memory left
@@ -22,7 +23,7 @@ int findFreeBlocks_sequential(AllocationTable *t, int nBlocks){ // will return t
     int sum = 0; // X number of TOTAL blocks
     int i = 0;
     int rt_val = -1;
-    while (i < X){
+    while (i < num_of_blocks){
         if (t->arrays[i] == 1){
             sum++;
             if(sum >= nBlocks){
@@ -113,7 +114,4 @@ void write_metadata(int pos, int id , FILE *ms, int new_value){
     fwrite(&buffer, sizeof(MetadataBlock), 1, ms);
 }
 
-int main() {
-    printf("Hello, World!\n");
-    return 0;
-}
+

@@ -1,87 +1,84 @@
 //
-// Created by xd on 31/12/2024.
+// Created by xd on 31/12/2024
 //
 
-#ifndef src_GEN_H
-#define src_GEN_H
-
+#ifndef SRC_GEN_H
+#define SRC_GEN_H
 
 #include <stdio.h>
 #include <stdlib.h>
 
+// Constants
+#define num_of_blocks 20    // Total number of blocks
+#define blocking_fact 4     // Blocking factor (number of records per block)
 
-#define num_of_blocks 20
-
-typedef struct record
-{
-    int Id; // cle de tri
-    int deleted; // supression logique
+// Record Structure
+typedef struct record {
+    int Id;       // Key for sorting
+    int deleted;  // Logical deletion flag (1 -> deleted, 0 -> not deleted)
 } Record, *RecordP;
 
-//Declaration du bloc
-typedef struct BLock
-{
-    Record tab[__INT16_MAX__];
-    int next;
-    int nbrecord;
+// Block Structure
+typedef struct BLock {
+    Record tab[blocking_fact];  // Array of records in the block
+    int next;                   // Address of the next block
+    int nbrecord;               // Number of records currently stored in the block
 } Block, *BlockP;
 
-// I/O
+// I/O Buffer
 typedef BlockP Buffer;
 
-//Declaration des metadonnees (caracteristiques)
-typedef struct Metadata
-{
-    int Firstblock; // First block adresse
-    char filename[20];
-    int nBlocks; // number of blocks in the file
-    int global_organs; // 1 -> LIST 0 -> SEQUIENTAL
-    int inter_organs; // 1 -> ordered 0-> unordered
-    int nRecords;// number of records in the file
+// Metadata Structure
+typedef struct Metadata {
+    int Firstblock;       // Address of the first block
+    char filename[20];    // File name
+    int nBlocks;          // Number of blocks in the file
+    int global_organs;    // 1 -> LIST, 0 -> SEQUENTIAL
+    int inter_organs;     // 1 -> Ordered, 0 -> Unordered
+    int nRecords;         // Total number of records in the file
 } Metadata;
 
+// Metadata Block (to manage multiple files)
 typedef struct {
-    Metadata table[num_of_blocks - 2];
-    int num_files;
+    Metadata table[num_of_blocks - 2];  // Metadata for files
+    int num_files;                     // Number of files stored
 } MetadataBlock;
 
-typedef struct  {
-    int arrays[num_of_blocks]; // 0 means block is free 1 means blocks is occupaied
+// Allocation Table Structure
+typedef struct {
+    int arrays[num_of_blocks];  // 0 -> Block is free, 1 -> Block is occupied
 } AllocationTable;
 
-// exemple of how the physical should be in the case of one LOF file in it (Logical file)
+// Primitive Functions
+// =====================
 
+// File Operations
+void CreateFile(char* filename, int organization);  // Create a new file
+void DeleteFile(char* filename);                    // Delete a file
+void RenameFile(char* oldname, char* newname);      // Rename a file
 
-////=================================== Primitives functions
+// Metadata Operations
+int search_metadata(const char* file_name, FILE *ms);       // Search for metadata by file name
+int read_metadata(int pos, int id, FILE *ms);               // Read metadata at a specific position
+void write_metadata(int pos, int id, FILE *ms, int new_value); // Write metadata value
 
-void CreateFile(char* filename, int organization);  // Create new file
-void DeleteFile(char* filename);                    // Delete entire file
-void RenameFile(char* oldname, char* newname);     // Rename file
-// LOF
-
-
-
-
-
-
-
+// Helper Functions
+void traverse_defBlocks(FILE *ms); // Traverse and display default blocks
 
 // Allocation Table Operations
-AllocationTable* initAllocationTable();  // Initialize table
-void setBlockStatus(AllocationTable *t, int blockNum, int status); // Set block status
-int getBlockStatus(AllocationTable *t, int blockNum);  // Get block status
-int findFreeBlocks(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
-// bach after to decide wether to call elimnate fragementation function or not
-void displayAllocationTable(AllocationTable *t);       // Display table status
+AllocationTable* initAllocationTable();                    // Initialize the allocation table
+void setBlockStatus(AllocationTable *t, int blockNum, int status); // Set block status (free/occupied)
+int getBlockStatus(AllocationTable *t, int blockNum);       // Get block status
+int findFreeBlocks_sequential(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
+int* findFreeBlocks_list(AllocationTable *t, int nBlocks);  // Find n free blocks (non-sequential)
+void displayAllocationTable(AllocationTable *t);           // Display allocation table status
 
-////=================================== Block
-void displayBlock(BlockP R);
+// Block Operations
+void displayBlock(BlockP R);  // Display a block's contents
 
-////=================================== Record
-void printRecord(RecordP R); // afficher
-void CopyRecord(RecordP R1, RecordP R2); //copier
-void createRecord(RecordP R); // lire les informations
+// Record Operations
+void printRecord(RecordP R);      // Display a record
+void CopyRecord(RecordP R1, RecordP R2); // Copy a record
+void createRecord(RecordP R);     // Create a record (read information)
 
-
-
-#endif //UNTITLED5_GEN_H
+#endif // SRC_GEN_H
