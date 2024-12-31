@@ -1,6 +1,12 @@
 cmake_minimum_required(VERSION 3.26)
-project(project)
+project(src C)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_C_STANDARD 11)
 
-add_executable(project main.cpp)
+add_executable(src gen.c
+        gen.h
+        main.c
+        LOF.h
+        LOF.c
+        TOF.h
+        TOF.c)

@@ -1,8 +1,16 @@
-#ifndef LOF_MODEL_H
-#define LOF_MODEL_H
+//
+// Created by xd on 31/12/2024.
+//
+
+#ifndef src_GEN_H
+#define src_GEN_H
+
 
 #include <stdio.h>
 #include <stdlib.h>
+
+
+#define num_of_blocks 20
 
 typedef struct record
 {
@@ -22,23 +30,23 @@ typedef struct BLock
 typedef BlockP Buffer;
 
 //Declaration des metadonnees (caracteristiques)
-typedef struct Metadata 
+typedef struct Metadata
 {
     int Firstblock; // First block adresse
     char filename[20];
-    int LastBlock; // Last block adresse
     int nBlocks; // number of blocks in the file
+    int global_organs; // 1 -> LIST 0 -> SEQUIENTAL
+    int inter_organs; // 1 -> ordered 0-> unordered
     int nRecords;// number of records in the file
-    char *del;	// logical erase indicators ('*' erased / ' ' not erased)
-} Metadata, *MetadataP;
+} Metadata;
 
 typedef struct {
-    Metadata* table;
+    Metadata table[num_of_blocks - 2];
     int num_files;
-} MetadataTable;
+} MetadataBlock;
 
 typedef struct  {
-    int array[__INT16_MAX__]; // 0 means block is free 1 means blocks is occupaied
+    int arrays[num_of_blocks]; // 0 means block is free 1 means blocks is occupaied
 } AllocationTable;
 
 // exemple of how the physical should be in the case of one LOF file in it (Logical file)
@@ -50,47 +58,30 @@ void CreateFile(char* filename, int organization);  // Create new file
 void DeleteFile(char* filename);                    // Delete entire file
 void RenameFile(char* oldname, char* newname);     // Rename file
 // LOF
-void LOF_InsertRecord(char* filename, Record* record);
-void LUOF_InsertRecord(char* filename, Record* record);
 
-int LOF_SearchRecord(char* filename, int id);
-int LUOF_SearchRecord(char* filename, int id);
 
-void LOF_DeleteRecord(char* filename, int id, int deleteType);
-void LUOF_DeleteRecord(char* filename, int id, int deleteType);
 
-void LOF_Reorganize(char* filename);
-void LUOF_Reorganize(char* filename);
 
-// TOF
-void TOF_InsertRecord(char* filename, Record* record);
-void TUOF_InsertRecord(char* filename, Record* record);
 
-int TOF_SearchRecord(char* filename, int id);
-int TUOF_SearchRecord(char* filename, int id);
 
-void TOF_DeleteRecord(char* filename, int id, int deleteType);
-void TUOF_DeleteRecord(char* filename, int id, int deleteType);
 
-void TOF_Compact(char* filename); // removes gaps mn logical deletions
-void TUOF_Compact(char* filename); // removes gaps mn logical deletions
 
 // Allocation Table Operations
-void initAllocationTable(AllocationTable *t);  // Initialize table
+AllocationTable* initAllocationTable();  // Initialize table
 void setBlockStatus(AllocationTable *t, int blockNum, int status); // Set block status
 int getBlockStatus(AllocationTable *t, int blockNum);  // Get block status
 int findFreeBlocks(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
 // bach after to decide wether to call elimnate fragementation function or not
 void displayAllocationTable(AllocationTable *t);       // Display table status
 
-////=================================== Block 
-void displayBlock(BlockP R); 
+////=================================== Block
+void displayBlock(BlockP R);
 
 ////=================================== Record
-void printRecord(RecordP R); // afficher 
+void printRecord(RecordP R); // afficher
 void CopyRecord(RecordP R1, RecordP R2); //copier
-void createRecord(RecordP R); // lire les informations 
+void createRecord(RecordP R); // lire les informations
 
 
 
-#endif
+#endif //UNTITLED5_GEN_H

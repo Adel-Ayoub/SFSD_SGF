@@ -142,102 +142,6 @@
 			"value" : "/Applications/CLion.app/Contents/bin/cmake/mac/bin/ctest"
 		},
 		{
-			"name" : "CMAKE_CXX_COMPILER",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "CXX compiler"
-				}
-			],
-			"type" : "FILEPATH",
-			"value" : "/Library/Developer/CommandLineTools/usr/bin/c++"
-		},
-		{
-			"name" : "CMAKE_CXX_FLAGS",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Flags used by the CXX compiler during all build types."
-				}
-			],
-			"type" : "STRING",
-			"value" : ""
-		},
-		{
-			"name" : "CMAKE_CXX_FLAGS_DEBUG",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Flags used by the CXX compiler during DEBUG builds."
-				}
-			],
-			"type" : "STRING",
-			"value" : "-g"
-		},
-		{
-			"name" : "CMAKE_CXX_FLAGS_MINSIZEREL",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Flags used by the CXX compiler during MINSIZEREL builds."
-				}
-			],
-			"type" : "STRING",
-			"value" : "-Os -DNDEBUG"
-		},
-		{
-			"name" : "CMAKE_CXX_FLAGS_RELEASE",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Flags used by the CXX compiler during RELEASE builds."
-				}
-			],
-			"type" : "STRING",
-			"value" : "-O3 -DNDEBUG"
-		},
-		{
-			"name" : "CMAKE_CXX_FLAGS_RELWITHDEBINFO",
-			"properties" : 
-			[
-				{
-					"name" : "ADVANCED",
-					"value" : "1"
-				},
-				{
-					"name" : "HELPSTRING",
-					"value" : "Flags used by the CXX compiler during RELWITHDEBINFO builds."
-				}
-			],
-			"type" : "STRING",
-			"value" : "-O2 -g -DNDEBUG"
-		},
-		{
 			"name" : "CMAKE_C_COMPILER",
 			"properties" : 
 			[
@@ -819,7 +723,7 @@
 				}
 			],
 			"type" : "STATIC",
-			"value" : "project"
+			"value" : "src"
 		},
 		{
 			"name" : "CMAKE_RANLIB",
@@ -1102,7 +1006,7 @@
 			"value" : "FALSE"
 		},
 		{
-			"name" : "project_BINARY_DIR",
+			"name" : "src_BINARY_DIR",
 			"properties" : 
 			[
 				{
@@ -1114,7 +1018,7 @@
 			"value" : "/Users/xd/CLionProjects/project/cmake-build-debug"
 		},
 		{
-			"name" : "project_IS_TOP_LEVEL",
+			"name" : "src_IS_TOP_LEVEL",
 			"properties" : 
 			[
 				{
@@ -1126,7 +1030,7 @@
 			"value" : "ON"
 		},
 		{
-			"name" : "project_SOURCE_DIR",
+			"name" : "src_SOURCE_DIR",
 			"properties" : 
 			[
 				{
