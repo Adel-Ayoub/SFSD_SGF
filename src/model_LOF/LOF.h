@@ -39,6 +39,15 @@ typedef struct LOF_MS
     Metadata H; // the metadata in main memory
 } LOF_Ms, *LOF_MsP;
 
+////=================================== Block 
+void displayBlock(BlockP R); 
+
+////=================================== Record
+void printRecord(RecordP R); // afficher 
+void CopyRecord(RecordP R1, RecordP R2); //copier
+void createRecord(RecordP R); // lire les informations 
+
+
 ////=================================== Primitives for LOF
 LOF_MsP LOF_open(LOF_MsP f, char *Fname, char mode);  //ouvrir le fichier logique
 void LOF_close(LOF_MsP f);  //fermer le fichier logique
@@ -49,14 +58,6 @@ void LOF_writeBlock(LOF_MsP f, int i, Buffer buffer);  //mettre le contenue du t
 void LOF_readBlock(LOF_MsP f, int i, Buffer buffer);  //mettre le contenue du bloc numero i dans le buffer
 void allocBlock(LOF_MsP f, int* i, Buffer* buffer);   //allouer un nouveau bloc et l'initialiser avec le contenue du buffer
 void displayLOF(LOF_MsP f, char *Fname, char result[]);     //afficher le contenue du fichier
-
-////=================================== Block 
-void displayBlock(BlockP R); 
-
-////=================================== Record
-void printRecord(RecordP R); // afficher 
-void CopyRecord(RecordP R1, RecordP R2); //copier
-void createRecord(RecordP R); // lire les informations 
 
 
 
