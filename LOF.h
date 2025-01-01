@@ -10,7 +10,7 @@
 void LOF_InsertRecord(char* filename, Record* record);
 int LOF_SearchRecord(char* filename, int id);
 void LOF_DeleteRecord(char* filename, int id, int deleteType);
-void LOF_Reorganize(char* filename);
+void LOF_Reorganize(char* filename); // Physcal deletion
 
 void LUOF_InsertRecord(char* filename, Record* record);
 int LUOF_SearchRecord(char* filename, int id);

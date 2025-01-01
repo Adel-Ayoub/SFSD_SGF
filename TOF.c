@@ -1,80 +1,16 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-
-typedef struct record
-{
-    int Id; // cle de tri
-    int deleted; 
-} Record, *RecordP;
-
-typedef struct BLock
-{
-    Record tab[__INT16_MAX__];
-    int next;
-    int nbrecord;
-} Block, *BlockP;
-
-
-typedef BlockP Buffer;
-
-
-typedef struct Metadata 
-{
-    int Firstblock;
-    char filename[20];
-    int nBlocks;
-    int global_organs;
-    int inter_organs;
-    int nRecords;
-} Metadata, *MetadataP;
-
-typedef struct {
-    Metadata* table;
-    int num_files;
-} MetadataTable;
-
-typedef struct  {
-    int array[__INT16_MAX__]; // 0 means block is free 1 means blocks is occupaied
-} AllocationTable;
+#include "gen.h"
 
 
 
 
-int LireEntete(FILE* F, int param, char* filename) {
-    MetadataTable metadataTable;
-    fseek(F, sizeof(AllocationTable), SEEK_SET);
-    fread(&metadataTable, sizeof(MetadataTable), 1, F);
 
-    for (int i = 0; i < metadataTable.num_files; i++) {
-        if (strcmp(metadataTable.table[i].filename, filename) == 0) {
-            switch (param) {
-                case 1:
-                    return metadataTable.table[i].Firstblock;
-                case 2:
-                    return metadataTable.table[i].nBlocks;
-                case 3:
-                    return metadataTable.table[i].global_organs;
-                case 4:
-                    return metadataTable.table[i].inter_organs;
-                case 5:
-                    return metadataTable.table[i].nRecords;
-                default:
-                    printf("Erreur : Paramètre invalide.\n");
-                    return -1;
-            }
-        }
-    }
 
-    printf("Erreur : Fichier non trouvé.\n");
-    return -1;
-}
-
-void MAJEntete(FILE* F, int param, int val);
-
-void LireBloc(FILE* F, int i, Block* buffer, MetadataTable* metadataTable   ) {
+void ReadBlock(FILE* F, int i, Block* buffer, MetadataBlock* metadataTable   ) {
     // Simuler la lecture du bloc `i` depuis le fichier
-    fseek(F, sizeof(metadataTable) + sizeof(int) + (metadataTable->num_files * sizeof(Metadata)) + ((i - 1) * sizeof(Block)), SEEK_SET); // Positionnement
+    fseek(F, sizeof(MetadataBlock) + sizeof(int) + (metadataTable->num_files * sizeof(Metadata)) + ((i - 1) * sizeof(Block)), SEEK_SET); // Positionnement
     fread(buffer, sizeof(Block), 1, F);         
 }
 
@@ -95,7 +31,7 @@ void EcrireBloc(FILE* F, int i, Block* buffer, MetadataTable* metadataTable) {
 
 
 
-bool TOF_SearchRecord(FILE* F,char* filename ,int c, int* i, int* j, MetadataTable* metadataTable) {
+bool TOF_SearchRecord(FILE* F,char* filename ,int c, int* i, int* j, MetadataBlock* metadataTable) {
     int bi = LireEntete(F,1,filename);                // Borne inférieure : numéro du premier bloc
     int bs = LireEntete(F, 2,filename)+bi -1; // Borne supérieure : numéro du dernier bloc
 
@@ -142,12 +78,12 @@ bool TOF_SearchRecord(FILE* F,char* filename ,int c, int* i, int* j, MetadataTab
 }
 
 
-void TOF_InsertRecord(FILE* F, const char* nomfich, Record e, MetadataTable* metadataTable, AllocationTable* table) {
+void TOF_InsertRecord(FILE* F, const char* filename, Record e, MetadataBlock* metadataTable, AllocationTable* table) {
     bool trouv;
     int i, j;
 
     // RechercheDichotomiquer la position où insérer le nouvel enregistrement
-    trouv=TOF_SearchRecord(F,nomfich,e.Id, &i, &j,metadataTable);
+    trouv=TOF_SearchRecord(F,filename,e.Id, &i, &j,metadataTable);
 
     if (!trouv) {
         Block buffer;

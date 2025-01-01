@@ -38,11 +38,12 @@ typedef struct Metadata {
     int nRecords;         // Total number of records in the file
 } Metadata;
 
+
 // Metadata Block (to manage multiple files)
 typedef struct {
-    Metadata table[num_of_blocks - 2];  // Metadata for files
+    Metadata table[num_of_blocks - 1];  // Metadata for files
     int num_files;                     // Number of files stored
-} MetadataBlock;
+} MetadataFile;
 
 // Allocation Table Structure
 typedef struct {
@@ -75,7 +76,7 @@ void displayAllocationTable(AllocationTable *t);           // Display allocation
 
 // Block Operations
 void displayBlock(BlockP R);  // Display a block's contents
-
+void ReadBlock();
 // Record Operations
 void printRecord(RecordP R);      // Display a record
 void CopyRecord(RecordP R1, RecordP R2); // Copy a record
