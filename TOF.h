@@ -1,21 +1,14 @@
-//
-// Created by xd on 31/12/2024.
-//
-
-#ifndef SRC_TOF_H
-#define SRC_TOF_H
+#include <stdbool.h>
+#include <string.h>
+#include <stdio.h>
 #include "gen.h"
-// ORDERED
-void TOF_InsertRecord(char* filename, Record* record);
-int TOF_SearchRecord(char* filename, int id);
-void TOF_DeleteRecord(char* filename, int id, int deleteType);
-void TOF_Compact(char* filename); // removes gaps mn logical deletions
 
-// UNORDERED
-void TUOF_InsertRecord(char* filename, Record* record);
-int TUOF_SearchRecord(char* filename, int id);
-void TUOF_DeleteRecord(char* filename, int id, int deleteType);
-void TUOF_Compact(char* filename); // removes gaps mn logical deletions
+void TOF_InitliazeFile(FILE *F, int Nrecords);
+void TOF_InsertRecord(FILE* F, const char* filename, Record e,  AllocationTable* table);
+bool TOF_SearchRecord(FILE* F,char* filename ,int c, int* i, int* j);
+void SuppressionLogiqueTOF(FILE* F, const char* filename, int c);
+void SuppressionPhysiqueTOF(FILE* F, const char* filename, int c);
+void TOF_DeleteRecord(FILE* F,char* filename, int id, int deleteType);
+void TOF_Reorganize(char* filename); // Physcal deletion
 
-
-#endif //SRC_TOF_H
+//

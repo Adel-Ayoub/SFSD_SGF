@@ -7,7 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
-
+#include "stdbool.h"
 // Constants
 #define num_of_blocks 20    // Total number of blocks
 #define blocking_fact 4     // Blocking factor (number of records per block)
@@ -38,11 +38,17 @@ typedef struct Metadata {
     int nRecords;         // Total number of records in the file
 } Metadata;
 
+typedef struct {
+    int x_block;
+    int y_record;
+    bool found;
+} coords;
+
 // Metadata Block (to manage multiple files)
 typedef struct {
-    Metadata table[num_of_blocks - 2];  // Metadata for files
+    Metadata table[num_of_blocks - 1];  // Metadata for files
     int num_files;                     // Number of files stored
-} MetadataBlock;
+} MetadataFile;
 
 // Allocation Table Structure
 typedef struct {
@@ -75,6 +81,8 @@ void displayAllocationTable(AllocationTable *t);           // Display allocation
 
 // Block Operations
 void displayBlock(BlockP R);  // Display a block's contents
+void ReadBlock(FILE* ms, int i, Block* buffer);
+void WriteBlock(FILE* F, int i, Block* buffer);
 
 // Record Operations
 void printRecord(RecordP R);      // Display a record
