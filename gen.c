@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "gen.h"
 #include "string.h"
-
+#include "stdbool.h"
 
 // -------- Allocation table
 
@@ -15,11 +15,17 @@ AllocationTable* initAllocationTable(){
     return p;
 }
 
+
 void setBlockStatus(AllocationTable* t,int blockNum, int status){
     t->arrays[blockNum] = status;
 }
 int getBlockStatus(AllocationTable *t, int blockNum){
     return t->arrays[blockNum];
+}
+
+void ReadAllocationTable(AllocationTable *t , FILE *ms){
+    rewind(ms);
+    fread(t, sizeof(AllocationTable), 1, ms);
 }
 
 int findFreeBlocks_sequential(AllocationTable *t, int nBlocks){ // will return the index of where you can put n blocks sequnetially
@@ -81,6 +87,30 @@ int* findFreeBlocks_list(AllocationTable *t, int nBlocks) {
 void traverse_defBlocks(FILE *ms){
     fseek(ms, sizeof(AllocationTable) , SEEK_SET);
 }
+
+
+// -- BLOCKS
+
+
+void ReadBlock(FILE* F, int i, Block* buffer) {
+    // Simuler la lecture du bloc `i` depuis le fichier
+    fseek(F, sizeof(AllocationTable) + (i - 1) * sizeof(Block), SEEK_SET); // Positionnement
+    fread(buffer, sizeof(Block), 1, F);
+}
+
+void WriteBlock(FILE* F, int i, Block* buffer) {
+    // Calculate the offset of the block in the file
+    int blockOffset = sizeof(AllocationTable) + (i - 1) * sizeof(Block);
+
+    // Move the file pointer to the block's position
+    fseek(F, blockOffset, SEEK_SET);
+
+    // Write the block data from the buffer to the file
+    fwrite(buffer, sizeof(Block), 1, F);
+}
+
+
+
 
 
 // ----- METADATA
