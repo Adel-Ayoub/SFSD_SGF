@@ -44,17 +44,17 @@ void LNOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e){
 				AllocationTable* t;
 				ReadAllocationTable(t,F);
 				int blocpos= *findFreeBlocks_list(t,1);//get pos for a new bloc
-				
+
 				buffer.next=blocpos;//link the last bloc to the new bloc
-				
+
 				ReadBlock(F,blocpos,&buffer);//read th new bloc to modefy it
-				
-				buffer.nbrecord=1;//filling the new bloc 
-				buffer.tab[0]=e;//filling the new bloc 
-				buffer.next=-1;//filling the new bloc 
-				
+
+				buffer.nbrecord=1;//filling the new bloc
+				buffer.tab[0]=e;//filling the new bloc
+				buffer.next=-1;//filling the new bloc
+
 				WriteBlock(F, blocpos, &buffer);//parse the data to the bloc
-				
+
 				setBlockStatus(F,blocpos,1);//set the new bloc to allocated in allocation table
 				break;
 			}
@@ -67,8 +67,8 @@ void LNOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e){
 	}
 }
 
-void SuppressionLogiqueLNOF(FILE* F, FILE* md ,const char* filename, int id)
-{	
+void LNOF_SuppressionLogique(FILE* F, FILE* md ,const char* filename, int id)
+{
 	coords recordcords=LNOF_SearchRecord(F,md,filename,id);
 	if(recordcords.found) //searching for record enter if found else exit
 		{
