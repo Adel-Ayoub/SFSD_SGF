@@ -100,4 +100,60 @@ void LNOF_SuppressionLogique(FILE* F, FILE* md ,const char* filename, int id)
 			printf("Erreur : L'enregistrement avec la clé %d n'existe pas.\n", id);
 		}
 }
+void LNOF_SuppressionPhysique(FILE* F, FILE* md ,const char* filename, int id){
+	coords recordcords=LNOF_SearchRecord(F,md,filename,id);
+	if(recordcords.found)
+	{
+		Block buffer;
+		ReadBlock(F,recordcords.x_block , &buffer);
+		buffer.tab[recordcords.y_record].deleted=1;
+		int r =blocking_fact-1;//right pointer
+		int l=-1;//left pointer
+		int i =0;//number of records deleted
+		
+		while(l<r &&buffer.tab[++l].deleted==0);
+		while(l<r &&buffer.tab[--r].deleted==1);
+		if(l<r)
+		{
+			buffer.tab[l]=buffer.tab[r];
+			buffer.tab[r].deleted=1;
+		};
+	};
+		buffer.nbrecord-=1;
+}
+void LNOF_DeleteRecord(FILE* F, FILE* md ,const char* filename, int id,int deleteType){
+	if(deleteType==0){
+		LNOF_SuppressionLogique(F,md,filename,id);
+	}else if(deleteType==1){
+		LNOF_SuppressionPhysique(F,md,filename,id);
+	}else{
+		printf("incorect delete type!!!!\n");
+		printf("0 for logical\n1 for physical");
+	}
+};
+void LNOF_reorgenize(FILE* F, FILE* md ,const char* filename){
+	int blocpos=search_metadata(filename,md);//get metadata position for the filename
+	blocpos=read_metadata(blocpos,1,md);//get first bloc position
+	Block buffer;
+	ReadBlock(F,1,&buffer);//read first bloc
+	while(true){
+		
+		int r =blocking_fact-1;//right pointer
+		int l=-1;//left pointer
+		
+		while(l<r){
+			while(l<r && buffer.tab[++l].deleted==0);
+			while(l<r && buffer.tab[--r].deleted==1);
+			if(l<r)
+			{
+				buffer.tab[l]=buffer.tab[r];
+				buffer.tab[r].deleted=1;
+			};
+		};
+		if(buffer.next==-1){
+			break;
+		};
+		ReadBlock(F,buffer.next,&buffer);
+	};
+};
 
