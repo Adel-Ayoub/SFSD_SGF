@@ -16,8 +16,11 @@ AllocationTable* initAllocationTable(){
 }
 
 
-void setBlockStatus(AllocationTable* t,int blockNum, int status){
-    t->arrays[blockNum] = status;
+void setBlockStatus(FILE* F,int blockNum, int status){
+	rewind(F);
+	AllocationTable* t;
+	fread(t, sizeof(AllocationTable), 1, F);
+	t->arrays[blockNum]=status;
 }
 int getBlockStatus(AllocationTable *t, int blockNum){
     return t->arrays[blockNum];

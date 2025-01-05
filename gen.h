@@ -73,7 +73,7 @@ void traverse_defBlocks(FILE *ms); // Traverse and display default blocks
 
 // Allocation Table Operations
 AllocationTable* initAllocationTable();                    // Initialize the allocation table
-void setBlockStatus(AllocationTable *t, int blockNum, int status); // Set block status (free/occupied)
+void setBlockStatus(FILE* F,int blockNum, int status); // Set block status (free/occupied)
 int getBlockStatus(AllocationTable *t, int blockNum);       // Get block status
 int findFreeBlocks_sequential(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
 int* findFreeBlocks_list(AllocationTable *t, int nBlocks);  // Find n free blocks (non-sequential)
