@@ -53,6 +53,7 @@ typedef struct {
 // Allocation Table Structure
 typedef struct {
     int arrays[num_of_blocks];  // 0 -> Block is free, 1 -> Block is occupied
+    int num_files;
 } AllocationTable;
 
 // Primitive Functions
