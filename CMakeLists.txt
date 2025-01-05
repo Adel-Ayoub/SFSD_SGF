@@ -9,4 +9,5 @@ add_executable(src gen.c
         LOF.h
         LOF.c
         TOF.h
-        TOF.c)
+        TOF.c
+        fs_simulator.c)
