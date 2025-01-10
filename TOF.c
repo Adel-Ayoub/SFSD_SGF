@@ -1,77 +1,10 @@
 #include <stdbool.h>
+#include <stddef.h>
 #include <string.h>
 #include <stdio.h>
 #include "gen.h"
 
 
-
-
-
-void TOF_InitializeFile(FILE *F,FILE *md, const char *filename, int Nrecords){
-    AllocationTable table;
-    ReadAllocationTable(&table, F);
-    int blocks_needed = (Nrecords + blocking_fact - 1) / blocking_fact;
-    int first_adresss = findFreeBlocks_sequential(&table, blocks_needed); 
-
-    RecordP tabOfID;
-    Block buffer;
-    int i;
-
-    if (first_adresss==-1)
-    {
-        //defragmentation externe
-        first_adresss = findFreeBlocks_sequential(&table, blocks_needed);
-        if (first_adresss==-1)
-        {
-            printf("Espace insufisant");
-            return;
-        }
-        
-    }
-
-    Metadata p;
-    strcpy(p.filename, filename);
-    p.inter_organs = 0;
-    p.global_organs = 0;
-    p.nRecords = Nrecords;
-    p.Firstblock = first_adresss;
-    p.nBlocks = blocks_needed; 
-
-    int nF=getnumberFiles(md);
-    fseek(md,sizeof(int)+ sizeof(p) *nF, SEEK_SET);
-    fwrite(&p, sizeof(p),1 , md);
-    
-    Record* tabOfID = (Record*)malloc(Nrecords * sizeof(Record));
-    if (tabOfID == NULL) { // Vérifier si l'allocation a échoué
-        printf("Erreur d'allocation mémoire.\n");
-        return ;
-    }
-
-    // Remplir le tableau
-    for (i = 0; i < Nrecords; i++) {
-        printf("Entrez l'ID pour l'enregistrement n%d : ", i);
-        scanf("%d", &(tabOfID[i].Id));
-        (tabOfID+i)->deleted=0;
-    }
-
-    trierTableau(tabOfID,Nrecords);
-
-    int k=0;
-    int i=0;
-    while (i < blocks_needed){
-        Block buffer;
-        int j = 0;
-        while (j < blocking_fact && 0 < Nrecords){
-            buffer.tab[j] = tabOfID[k];
-            j++;
-            Nrecords--;
-            k++;
-        }
-        WriteBlock(F,i+first_adresss,&buffer);
-        i++;
-    }
-    free(tabOfID);
-}
 
 
 void trierTableau(Record tableau[], int taille) {
@@ -91,6 +24,78 @@ void trierTableau(Record tableau[], int taille) {
         }
     }
 }
+
+
+void TOF_InitializeFile(FILE *F,FILE *md, const char *filename, int Nrecords){
+
+    AllocationTable* table = malloc(sizeof(AllocationTable));
+    if (table == NULL) {
+        perror("Memory allocation failed for AllocationTable");
+        return;
+    }
+    ReadAllocationTable(table, F);
+    int blocks_needed = (Nrecords + blocking_fact - 1) / blocking_fact;
+    int first_adresss =findFreeBlocks_sequential(table, blocks_needed); 
+    Block buffer;
+    int i;
+
+    if (first_adresss==-1)
+    {
+        //defragmentation externe
+        first_adresss = findFreeBlocks_sequential(table, blocks_needed);
+        if (first_adresss==-1)
+        {
+            printf("Espace insufisant\n");
+            return;
+        }
+        
+    }
+
+    Metadata p;
+    strcpy(p.filename, filename);
+    p.inter_organs = 0;
+    p.global_organs = 0;
+    p.nRecords = Nrecords;
+    p.Firstblock = first_adresss;
+    p.nBlocks = blocks_needed+first_adresss-1; 
+
+    
+    Record* tabOfID = (Record*)malloc(Nrecords * sizeof(Record));
+    if (tabOfID == NULL) { // Vérifier si l'allocation a échoué
+        printf("Erreur d'allocation mémoire.\n");
+        return ;
+    }
+    
+    // Remplir le tableau
+    for (i = 0; i < Nrecords; i++) {
+        printf("Entrez l'ID pour l'enregistrement n%d : ", i);
+        scanf("%d", &(tabOfID[i].Id));
+        (tabOfID+i)->deleted=0;
+    }
+
+    fseek(md,sizeof(Metadata)*table->num_files,SEEK_SET);
+    fwrite(md,sizeof(p),1,md);
+    trierTableau(tabOfID,Nrecords);
+
+    int k=0;
+    i=0;
+    while (i < blocks_needed){
+        Block buffer;
+        int j = 0;
+        while (j < blocking_fact && 0 < Nrecords){
+            buffer.tab[j] = tabOfID[k];
+            j++;
+            Nrecords--;
+            k++;
+        }
+        WriteBlock(F,i+first_adresss,&buffer);
+        setBlockStatus(table,i+first_adresss,1);
+        i++;
+    }
+    free(tabOfID);
+}
+
+
 
 
 coords TOF_SearchRecord(FILE* F,FILE *md ,const char* filename ,int id) {
@@ -159,6 +164,10 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
 
     trouv=TOF_SearchRecord(F, md,filename,e.Id);
     // RechercheDichotomique la position où insérer le nouvel enregistrement
+    if (trouv.x_block=-1)
+    {
+        return;
+    }
     
     if (!trouv.found) {
         Block buffer;
@@ -217,7 +226,7 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
 
         // Si on dépasse la fin du fichier, ajouter un nouveau bloc
         if (trouv.x_block > read_metadata(pos_m, 2,md)+read_metadata(pos_m,1,md)-1) {
-            if (getBlockStatus(table, trouv.x_block) == 1) {  // Vérifier si le bloc est libre
+            if (getBlockStatus(table, trouv.x_block) == 0) {  // Vérifier si le bloc est libre
                 buffer.nbrecord = 1;
                 buffer.tab[0] = e;
                 WriteBlock(F, trouv.x_block, &buffer);
@@ -234,10 +243,11 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
 }
 
 
-void TOF_DeleteRecord(FILE* F,FILE* md,char* filename,AllocationTable *t, int id) {
+void TOF_DeleteRecord(FILE* F,FILE* md,const char* filename, int id) {
     coords trouv;
 
-
+    AllocationTable t;
+    ReadAllocationTable(&t,md);
     if (!F || !md) {
     printf("Erreur : Fichier non valide.\n");
     return;
@@ -252,7 +262,7 @@ void TOF_DeleteRecord(FILE* F,FILE* md,char* filename,AllocationTable *t, int id
             // Supprimer l'enregistrement
             buffer.tab[trouv.y_record].deleted = 1;
 
-            int validrecod;
+            int validrecod=0;
 
             for (int i = 0; i < buffer.nbrecord; i++)
             {
@@ -265,15 +275,15 @@ void TOF_DeleteRecord(FILE* F,FILE* md,char* filename,AllocationTable *t, int id
             
 
             if (validrecod == 0) {
-                setBlockStatus(t, trouv.x_block,0);
+                setBlockStatus(&t, trouv.x_block,0);
 
                 int pos_meta = search_metadata(filename, md);
                 
                 int lastBlock = read_metadata(pos_meta, 2, md)+read_metadata(pos_meta,1,md)-1;
 
                 if (trouv.x_block == lastBlock) {
-                    int newLastBlock = lastBlock - 1;
-                    write_metadata(pos_meta, 2, newLastBlock, md);
+                    int newLastBlock = read_metadata(pos_meta, 2, md) - 1;
+                    write_metadata(pos_meta, 2,md,newLastBlock);
                 }
 
                 printf("Bloc %d est maintenant vide et marqué comme libre.\n", trouv.x_block);
