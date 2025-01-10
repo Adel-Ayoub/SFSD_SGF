@@ -13,11 +13,17 @@ void TNOF_InitliazeFile(FILE *F, FILE* MD,const char* filename,int Nrecords){
     }
     ReadAllocationTable(table, F);
     int blocks_needed = (int)(Nrecords / blocking_fact) + 1;
+    printf("--------- init\n ");
+    printf("%d", blocks_needed);
+    printf("--------- init\n ");
+
     int first_adresss = findFreeBlocks_sequential(table, blocks_needed);
+    printf("first adress %d", first_adresss);
     if (first_adresss == -1) {
         printf("Not enough blocks sorry");
         return; // Not enough continuous blocks available
     }
+    // Create metadata entry
     Metadata p;
     strcpy(p.filename, filename);
     p.inter_organs = 0;
@@ -25,17 +31,25 @@ void TNOF_InitliazeFile(FILE *F, FILE* MD,const char* filename,int Nrecords){
     p.nRecords = Nrecords;
     p.Firstblock = first_adresss;
     p.nBlocks = blocks_needed;
+
+    //
     printf("Okay creating file \n");
     printf("%s", p.filename);
-    fseek(MD, sizeof(p) * table->num_files, SEEK_SET);
+    fseek(MD, 0, SEEK_END);
     fwrite(&p, sizeof(p),1 , MD);
-    fseek(F, sizeof(Block) * first_adresss, SEEK_SET);
+    table->num_files++;
+
+
+    fseek(F, sizeof(AllocationTable) + (first_adresss * sizeof(Block)), SEEK_SET);
     int counter = 0;
     int i = 0;
+
     while (i < blocks_needed){
         Block buffer;
+        buffer.nbrecord = 0;
+
         int j = 0;
-        while (j < blocking_fact && 0 < Nrecords){
+        while (j < blocking_fact  && 0 < Nrecords){
             Record student;
             student.deleted = 0;
             student.Id = counter;
@@ -80,10 +94,12 @@ void TNOF_InsertRecord(FILE* F, FILE* MD, const char* filename, Record e, Alloca
 
     // Create and initialize buffer
     Block buffer;
-    buffer.nbrecord = 0; // Explicitly set number of records to 0
 
     // Calculate position of last block
-    long blockPosition = sizeof(AllocationTable) + (fb + nb - 1) * sizeof(Block);
+    long blockPosition = sizeof(AllocationTable) + (fb + nb - 2) * sizeof(Block);
+    printf("----------");
+    printf("%d", blockPosition);
+    printf("----------");
 
     // Seek to last block
     if (fseek(F, blockPosition, SEEK_SET) != 0) {
@@ -158,17 +174,14 @@ void TNOF_InsertRecord(FILE* F, FILE* MD, const char* filename, Record e, Alloca
 }
 coords TNOF_SearchRecord(FILE* F, FILE* MD, const char* filename ,int id){
     int pos = search_metadata(filename,MD);
-    Metadata p;
     Block buffer;
     coords t;
     t.x_block = -1;
     t.y_record = -1;
     t.found = false;
-    int fb = read_metadata(pos, 1,MD);
-    int nb = read_metadata(pos, 2,MD);
-    int nRecords = read_metadata(pos, 3,MD);
-    fseek(F, sizeof(Block) * fb, SEEK_SET);
-    int found = 0;
+    int fb = read_metadata(pos, 1,MD); // first adresss
+    int nb = read_metadata(pos, 2,MD); // number of blocks
+    fseek(F, sizeof(Block) * (fb - 1) + sizeof(AllocationTable),SEEK_SET);
     int j = 0;
 
     while ( j < nb && !t.found){
@@ -194,7 +207,7 @@ void SuppressionLogiqueTNOF(FILE* F, FILE* MD,const char* filename, int id){
     if (p.found) {
 
         Block buffer;
-        fseek(F, sizeof(Block) * p.x_block, SEEK_SET);
+        fseek(F, sizeof(AllocationTable) + sizeof(Block) * (p.x_block - 1), SEEK_SET);
         fread(&buffer, sizeof(Block), 1, F);
         buffer.tab[p.y_record].deleted = 1;
         fseek(F, sizeof(Block) * -1, SEEK_CUR);
@@ -391,24 +404,26 @@ int main() {
     printf("Press Enter to continue...");
     getchar();
     // 4. Search for a record
-    printf("\nSearching for record with ID=3...\n");
-    coords searchResult = TNOF_SearchRecord(mainStorage, metadataFile, "students.dat", 3);
+    printf("\nSearching for record with ID=12...\n");
+    coords searchResult = TNOF_SearchRecord(mainStorage, metadataFile, "students.dat", 12);
     if (searchResult.found) {
-        printf("Found record ID=3 in block %d, position %d\n",
+        printf("Found record ID=12 in block %d, position %d\n",
                searchResult.x_block, searchResult.y_record);
         printBlockContents(mainStorage, searchResult.x_block);
     } else {
         printf("Record with ID=3 not found!\n");
     }
-    printf("Press Enter to continue...");
+    printf("Searching finished now deletion...");
     getchar();
     // 5. Logical deletion
     printf("\nPerforming logical deletion of record with ID=3...\n");
-    SuppressionLogiqueTNOF(mainStorage, metadataFile, "students.dat", 3);
+    SuppressionLogiqueTNOF(mainStorage, metadataFile, "students.dat", 12);
+    ReadStorageFile(mainStorage);
+
     printf("Press Enter to continue...");
     getchar();
     // Verify deletion
-    searchResult = TNOF_SearchRecord(mainStorage, metadataFile, "students.dat", 3);
+    searchResult = TNOF_SearchRecord(mainStorage, metadataFile, "students.dat", 12);
     if (searchResult.found) {
         printf("Checking deleted status...\n");
         Block buffer;
