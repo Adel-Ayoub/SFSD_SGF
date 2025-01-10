@@ -9,4 +9,5 @@ add_executable(src gen.c
 
 
         TNOF.h
-        TNOF.c)
+        TNOF.c
+        fs_simulator.h)
