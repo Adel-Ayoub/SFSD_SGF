@@ -4,13 +4,22 @@
 #include "stdbool.h"
 
 // -------- Allocation table
-
-AllocationTable* initAllocationTable(){
+int num_of_blocks = 0;    // Default number of blocks
+int blocking_fact = 0;     // Default blocking factor
+AllocationTable* initAllocationTable() {
     AllocationTable* p = (AllocationTable*)malloc(sizeof(AllocationTable));
     if (!p) {
         printf("Failed to allocate memory for AllocationTable\n");
         exit(1);
     }
+
+    p->arrays = (int*)malloc(num_of_blocks * sizeof(int));
+    if (!p->arrays) {
+        free(p);
+        printf("Failed to allocate memory for arrays\n");
+        exit(1);
+    }
+
     for (int i = 1; i < num_of_blocks; i++) {
         p->arrays[i] = 0; // Mark all blocks as free
     }
@@ -25,11 +34,24 @@ void setBlockStatus(FILE* F,int blockNum, int status){
 	AllocationTable* t;
 	fread(t, sizeof(AllocationTable), 1, F);
 	t->arrays[blockNum]=status;
+
+}
+void setBlockStatus_W(FILE* F,int blockNum, int status, AllocationTable* t){
+    rewind(F);
+    fread(t, sizeof(AllocationTable), 1, F);
+    t->arrays[blockNum]=status;
+    fseek(F, 0 , SEEK_SET);
+    fwrite(t, sizeof(AllocationTable), 1, F);
+
 }
 int getBlockStatus(AllocationTable *t, int blockNum){
     return t->arrays[blockNum];
 }
 
+void WriteAllocationTable(AllocationTable *t , FILE *ms){
+    rewind(ms);
+    fwrite(t, sizeof(AllocationTable), 1, ms);
+}
 void ReadAllocationTable(AllocationTable *t , FILE *ms){
     rewind(ms);
     fread(t, sizeof(AllocationTable), 1, ms);
@@ -97,14 +119,22 @@ void traverse_defBlocks(FILE *ms){
 }
 
 
-// -- BLOCKS
+// --------------------------------------- BLOCKS
 
 
 void ReadBlock(FILE* F, int i, Block* buffer) {
-    // Simuler la lecture du bloc `i` depuis le fichier
+    // Allocate memory for the record array
+    buffer->tab = (Record*)malloc(blocking_fact * sizeof(Record));
+    if (!buffer->tab) {
+        printf("Failed to allocate memory for block records\n");
+        exit(1);
+    }
+
+    // Simulate reading the block `i` from the file
     fseek(F, sizeof(AllocationTable) + (i - 1) * sizeof(Block), SEEK_SET); // Positionnement
     fread(buffer, sizeof(Block), 1, F);
 }
+
 
 void WriteBlock(FILE* F, int i, Block* buffer) {
     // Calculate the offset of the block in the file
@@ -127,14 +157,10 @@ int search_metadata(const char* file_name, FILE *md) {
     // Go to block 2
     int pos = 0;
     Metadata buffer;
-    printf("\n searching for metadata");
     rewind(md);
 
     // Keep reading metadata records until EOF
     while (fread(&buffer, sizeof(Metadata), 1, md) == 1) {
-        printf("%s \n", buffer.filename);
-        printf("\n %s", file_name);
-        printf("\n is it the same?");
         if (strcmp(buffer.filename, file_name) == 0) {
             return pos;
         }
@@ -143,6 +169,12 @@ int search_metadata(const char* file_name, FILE *md) {
     return -1;  // Not found
 }
 
+
+void Readmeta_FULL(FILE* MD, Metadata* p, int pos) {
+    // Note: Changed from &p to p since we already have a pointer
+    fseek(MD, sizeof(Metadata) * pos, SEEK_SET);
+    fread(p, sizeof(Metadata), 1, MD);
+}
 int read_metadata(int pos, int id, FILE *meta_dat) {
     Metadata buffer;
 
@@ -189,4 +221,13 @@ void write_metadata(int pos, int id , FILE *metadata_file, int new_value){
     fwrite(&buffer, sizeof(Metadata), 1, metadata_file);
 }
 
+void RenameFile(char* oldname, char* newname, FILE* md){
+    int pos = search_metadata(oldname, md);
+    Metadata* p;
+    Readmeta_FULL(md, p,pos);
+    strcpy(p->filename,newname);
+    fseek(md, sizeof(Metadata) * pos, SEEK_SET);
+    fwrite(p, sizeof(Metadata), 1, md);
 
+}
+// FILES-----

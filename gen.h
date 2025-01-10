@@ -9,9 +9,8 @@
 #include <stdlib.h>
 #include "stdbool.h"
 // Constants
-#define num_of_blocks 12    // Total number of blocks
-#define blocking_fact 2     // Blocking factor (number of records per block)
-
+extern int num_of_blocks;    // Total number of blocks
+extern int blocking_fact;
 // Record Structure
 typedef struct record {
     int Id;       // Key for sorting
@@ -20,9 +19,9 @@ typedef struct record {
 
 // Block Structure
 typedef struct BLock {
-    Record tab[blocking_fact];  // Array of records in the block
-    int next;                   // Address of the next block
-    int nbrecord;               // Number of records currently stored in the block
+    Record *tab;  // Dynamically allocated array of records in the block
+    int next;     // Address of the next block
+    int nbrecord; // Number of records currently stored in the block
 } Block, *BlockP;
 
 // I/O Buffer
@@ -44,15 +43,11 @@ typedef struct {
     bool found;
 } coords;
 
-// Metadata Block (to manage multiple files)
-typedef struct {
-    Metadata table[num_of_blocks - 1];  // Metadata for files
-    int num_files;                     // Number of files stored
-} MetadataFile;
+
 
 // Allocation Table Structure
 typedef struct {
-    int arrays[num_of_blocks];  // 0 -> Block is free, 1 -> Block is occupied
+    int *arrays;  // Dynamically allocated array of block statuses
     int num_files;
 } AllocationTable;
 
@@ -62,25 +57,26 @@ typedef struct {
 // File Operations
 void CreateFile(char* filename, int organization);  // Create a new file
 void DeleteFile(char* filename);                    // Delete a file
-void RenameFile(char* oldname, char* newname);      // Rename a file
+void RenameFile(char* oldname, char* newname, FILE* md);
 
 // Metadata Operations
 int search_metadata(const char* file_name, FILE *ms);       // Search for metadata by file name
 int read_metadata(int pos, int id, FILE *ms);               // Read metadata at a specific position
 void write_metadata(int pos, int id, FILE *ms, int new_value); // Write metadata value
-
+void Readmeta_FULL(FILE* MD, Metadata* p, int pos);
 // Helper Functions
 void traverse_defBlocks(FILE *ms); // Traverse and display default blocks
 
 // Allocation Table Operations
 AllocationTable* initAllocationTable();
 void ReadAllocationTable(AllocationTable *t , FILE *ms);
+void WriteAllocationTable(AllocationTable *t , FILE *ms);
 void setBlockStatus(FILE* F,int blockNum, int status); // Set block status (free/occupied)
 int getBlockStatus(AllocationTable *t, int blockNum);
 int findFreeBlocks_sequential(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
 int* findFreeBlocks_list(AllocationTable *t, int nBlocks);  // Find n free blocks (non-sequential)
 void displayAllocationTable(AllocationTable *t);           // Display allocation table status
-
+void setBlockStatus_W(FILE* F,int blockNum, int status, AllocationTable* t);
 // Block Operations
 void displayBlock(BlockP R);  // Display a block's contents
 void ReadBlock(FILE* ms, int i, Block* buffer);
