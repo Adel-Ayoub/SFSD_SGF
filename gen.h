@@ -20,7 +20,7 @@ typedef struct record {
 
 // Block Structure
 typedef struct BLock {
-    Record tab[blocking_fact - 1];  // Array of records in the block
+    Record tab[blocking_fact];  // Array of records in the block
     int next;                   // Address of the next block
     int nbrecord;               // Number of records currently stored in the block
 } Block, *BlockP;
