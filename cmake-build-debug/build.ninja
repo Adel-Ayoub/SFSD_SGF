@@ -61,24 +61,6 @@ build CMakeFiles/src.dir/main.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLi
   OBJECT_DIR = CMakeFiles/src.dir
   OBJECT_FILE_DIR = CMakeFiles/src.dir
 
-build CMakeFiles/src.dir/LOF.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLionProjects/project/LOF.c || cmake_object_order_depends_target_src
-  DEP_FILE = CMakeFiles/src.dir/LOF.c.o.d
-  FLAGS = -g -std=gnu11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/src.dir
-  OBJECT_FILE_DIR = CMakeFiles/src.dir
-
-build CMakeFiles/src.dir/TOF.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLionProjects/project/TOF.c || cmake_object_order_depends_target_src
-  DEP_FILE = CMakeFiles/src.dir/TOF.c.o.d
-  FLAGS = -g -std=gnu11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/src.dir
-  OBJECT_FILE_DIR = CMakeFiles/src.dir
-
-build CMakeFiles/src.dir/fs_simulator.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLionProjects/project/fs_simulator.c || cmake_object_order_depends_target_src
-  DEP_FILE = CMakeFiles/src.dir/fs_simulator.c.o.d
-  FLAGS = -g -std=gnu11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
-  OBJECT_DIR = CMakeFiles/src.dir
-  OBJECT_FILE_DIR = CMakeFiles/src.dir
-
 build CMakeFiles/src.dir/TNOF.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLionProjects/project/TNOF.c || cmake_object_order_depends_target_src
   DEP_FILE = CMakeFiles/src.dir/TNOF.c.o.d
   FLAGS = -g -std=gnu11 -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk -fcolor-diagnostics
@@ -93,7 +75,7 @@ build CMakeFiles/src.dir/TNOF.c.o: C_COMPILER__src_unscanned_Debug /Users/xd/CLi
 #############################################
 # Link the executable src
 
-build src: C_EXECUTABLE_LINKER__src_Debug CMakeFiles/src.dir/gen.c.o CMakeFiles/src.dir/main.c.o CMakeFiles/src.dir/LOF.c.o CMakeFiles/src.dir/TOF.c.o CMakeFiles/src.dir/fs_simulator.c.o CMakeFiles/src.dir/TNOF.c.o
+build src: C_EXECUTABLE_LINKER__src_Debug CMakeFiles/src.dir/gen.c.o CMakeFiles/src.dir/main.c.o CMakeFiles/src.dir/TNOF.c.o
   FLAGS = -g -arch arm64 -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.0.sdk
   OBJECT_DIR = CMakeFiles/src.dir
   POST_BUILD = :

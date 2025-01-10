@@ -9,8 +9,8 @@
 #include <stdlib.h>
 #include "stdbool.h"
 // Constants
-#define num_of_blocks 20    // Total number of blocks
-#define blocking_fact 4     // Blocking factor (number of records per block)
+#define num_of_blocks 12    // Total number of blocks
+#define blocking_fact 2     // Blocking factor (number of records per block)
 
 // Record Structure
 typedef struct record {
@@ -20,7 +20,7 @@ typedef struct record {
 
 // Block Structure
 typedef struct BLock {
-    Record tab[blocking_fact];  // Array of records in the block
+    Record tab[blocking_fact - 1];  // Array of records in the block
     int next;                   // Address of the next block
     int nbrecord;               // Number of records currently stored in the block
 } Block, *BlockP;
@@ -73,9 +73,10 @@ void write_metadata(int pos, int id, FILE *ms, int new_value); // Write metadata
 void traverse_defBlocks(FILE *ms); // Traverse and display default blocks
 
 // Allocation Table Operations
-AllocationTable* initAllocationTable();                    // Initialize the allocation table
+AllocationTable* initAllocationTable();
+void ReadAllocationTable(AllocationTable *t , FILE *ms);
 void setBlockStatus(FILE* F,int blockNum, int status); // Set block status (free/occupied)
-int getBlockStatus(AllocationTable *t, int blockNum);       // Get block status
+int getBlockStatus(AllocationTable *t, int blockNum);
 int findFreeBlocks_sequential(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
 int* findFreeBlocks_list(AllocationTable *t, int nBlocks);  // Find n free blocks (non-sequential)
 void displayAllocationTable(AllocationTable *t);           // Display allocation table status

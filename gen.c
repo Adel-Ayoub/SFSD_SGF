@@ -7,11 +7,15 @@
 
 AllocationTable* initAllocationTable(){
     AllocationTable* p = (AllocationTable*)malloc(sizeof(AllocationTable));
-    if (p == NULL) { // no memory left
+    if (!p) {
+        printf("Failed to allocate memory for AllocationTable\n");
         exit(1);
     }
+    for (int i = 1; i < num_of_blocks; i++) {
+        p->arrays[i] = 0; // Mark all blocks as free
+    }
     p->arrays[0] = 1;
-    p->arrays[1] = 1;
+    p->num_files = 0;
     return p;
 }
 
@@ -36,7 +40,8 @@ int findFreeBlocks_sequential(AllocationTable *t, int nBlocks){ // will return t
     int i = 0;
     int rt_val = -1;
     while (i < num_of_blocks){
-        if (t->arrays[i] == 1){
+        printf("%d ", t->arrays[i]);
+        if (t->arrays[i] == 0){
             sum++;
             if(sum >= nBlocks){
                 rt_val = i - sum + 1;
@@ -118,13 +123,18 @@ void WriteBlock(FILE* F, int i, Block* buffer) {
 
 // ----- METADATA
 
-int search_metadata(const char* file_name, FILE *ms) {
+int search_metadata(const char* file_name, FILE *md) {
     // Go to block 2
     int pos = 0;
     Metadata buffer;
+    printf("\n searching for metadata");
+    rewind(md);
 
     // Keep reading metadata records until EOF
-    while (fread(&buffer, sizeof(Metadata), 1, ms) == 1) {
+    while (fread(&buffer, sizeof(Metadata), 1, md) == 1) {
+        printf("%s \n", buffer.filename);
+        printf("\n %s", file_name);
+        printf("\n is it the same?");
         if (strcmp(buffer.filename, file_name) == 0) {
             return pos;
         }
