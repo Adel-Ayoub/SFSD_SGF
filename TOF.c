@@ -74,7 +74,7 @@ void TOF_InitializeFile(FILE *F,FILE *md, const char *filename, int Nrecords){
     }
 
     fseek(md,sizeof(Metadata)*table->num_files,SEEK_SET);
-    fwrite(md,sizeof(p),1,md);
+    fwrite(&p,sizeof(p),1,md);
     trierTableau(tabOfID,Nrecords);
 
     int k=0;
@@ -93,6 +93,7 @@ void TOF_InitializeFile(FILE *F,FILE *md, const char *filename, int Nrecords){
         i++;
     }
     free(tabOfID);
+    free(table);
 }
 
 
@@ -164,19 +165,25 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
 
     trouv=TOF_SearchRecord(F, md,filename,e.Id);
     // RechercheDichotomique la position où insérer le nouvel enregistrement
-    if (trouv.x_block=-1)
+    if (trouv.x_block==-1)
     {
         return;
     }
+
+    if (trouv.found) {
+        printf("Record with ID %d already exists\n", e.Id);
+        return;
+    }
     
+    bool continu = true;
+    int pos_m = search_metadata(filename, md);
     if (!trouv.found) {
         Block buffer;
-        bool continu = true;
 
         
-        int pos_m = search_metadata(filename, md);
         int fb = read_metadata(pos_m, 1,md);
         int nb = read_metadata(pos_m, 2,md);
+        int last_block = fb + nb - 1;
 
        
         while (continu && trouv.x_block <= read_metadata(pos_m, 2,md)+read_metadata(pos_m,1,md)-1) {
@@ -185,14 +192,11 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
             if (buffer.nbrecord == blocking_fact ){
                 if (getBlockStatus(table,fb + nb) == 1)
                 {
-                    //reorganizeTOF
-                    if (getBlockStatus(table,fb + nb) == 1){\
-                        //fragmentation externe
+                    TOF_Reorganize(F, md, filename);
                         if (getBlockStatus(table,fb + nb) == 1){
                         printf("Not enough space");
                         break;
                         }
-                    }
                 }
                 
                 Record x = buffer.tab[blocking_fact - 1];
@@ -212,7 +216,7 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
                 e = x; // L'enregistrement excédentaire sera inséré dans le bloc suivant
             } else {
                 
-                for (int k = buffer.nbrecord - 1; k >= trouv.x_block; k--) {
+                for (int k = buffer.nbrecord - 1; k >= trouv.y_record; k--) {
                     buffer.tab[k + 1] = buffer.tab[k];
                 }
 
@@ -224,22 +228,53 @@ void TOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,  Allocat
             }
         }
 
+        int current_block=trouv.x_block;
         // Si on dépasse la fin du fichier, ajouter un nouveau bloc
-        if (trouv.x_block > read_metadata(pos_m, 2,md)+read_metadata(pos_m,1,md)-1) {
-            if (getBlockStatus(table, trouv.x_block) == 0) {  // Vérifier si le bloc est libre
+        if (continu) {
+            if (getBlockStatus(table, current_block) == 1) {
+            // No free block available, attempt reorganization
+            printf("Attempting file reorganization to free space...\n");
+            TOF_Reorganize(F, md, filename);
+            
+            // Re-read metadata after reorganization
+            nb = read_metadata(pos_m, 2, md);
+            last_block = fb + nb - 1;
+            
+            // Check if we have a free block after reorganization
+            if (getBlockStatus(table, last_block + 1) == 0) {
+                // Try insertion in the new block
+                memset(&buffer, 0, sizeof(Block));
                 buffer.nbrecord = 1;
                 buffer.tab[0] = e;
-                WriteBlock(F, trouv.x_block, &buffer);
-                write_metadata(pos_m,2, md, trouv.x_block); // Mettre à jour le numéro du dernier bloc
+                WriteBlock(F, last_block + 1, &buffer);
+                setBlockStatus(table, last_block + 1, 1);
+                write_metadata(pos_m, 2, md, nb + 1);
+                continu = false;
             } else {
-                printf("Erreur : Impossible d'ajouter un nouveau bloc, l'espace est plein.\n");
+                printf("Error: No space available even after reorganization\n");
                 return;
             }
+        } else {
+            // Free block available, use it
+            memset(&buffer, 0, sizeof(Block));
+            buffer.nbrecord = 1;
+            buffer.tab[0] = e;
+            WriteBlock(F, current_block, &buffer);
+            setBlockStatus(table, current_block, 1);
+            write_metadata(pos_m, 2, md, nb + 1);
+            continu = false;
         }
-        int nRECO = read_metadata(pos_m, 3,md);
-        write_metadata(pos_m,3,md,nRECO+1);
+    }
+
+    if (!continu) {
+        // Update record count
+        int nRecords = read_metadata(pos_m, 3, md);
+        write_metadata(pos_m, 3, md, nRecords + 1);
+        printf("Record inserted successfully\n");
+    }
 
     }
+
 }
 
 
@@ -303,4 +338,107 @@ void TOF_DeleteRecord(FILE* F,FILE* md,const char* filename, int id) {
         printf("Erreur : L'enregistrement avec la clé %d n'existe pas.\n", id);
     }
 
+}
+
+
+void TOF_Reorganize(FILE* F, FILE* md, const char* filename) {
+    int pos_meta = search_metadata(filename, md);
+    if (pos_meta == -1) {
+        printf("File not found\n");
+        return;
+    }
+
+    // Get file metadata
+    int first_block = read_metadata(pos_meta, 1, md);
+    int num_blocks = read_metadata(pos_meta, 2, md);
+    int last_block = first_block + num_blocks - 1;
+    
+    // Create temporary array to store valid records
+    Record* valid_records = NULL;
+    int valid_count = 0;
+    Block buffer;
+
+    // First pass: Count valid records and allocate array
+    for (int i = first_block; i <= last_block; i++) {
+        ReadBlock(F, i, &buffer);
+        for (int j = 0; j < buffer.nbrecord; j++) {
+            if (buffer.tab[j].deleted == 0) {
+                valid_count++;
+            }
+        }
+    }
+
+    valid_records = (Record*)malloc(valid_count * sizeof(Record));
+    if (!valid_records) {
+        printf("Memory allocation failed\n");
+        return;
+    }
+
+    // Second pass: Collect all valid records
+    int idx = 0;
+    for (int i = first_block; i <= last_block; i++) {
+        ReadBlock(F, i, &buffer);
+        for (int j = 0; j < buffer.nbrecord; j++) {
+            if (buffer.tab[j].deleted == 0) {
+                valid_records[idx++] = buffer.tab[j];
+            }
+        }
+    }
+
+    // Sort the valid records by ID (to maintain TOF property)
+    for (int i = 0; i < valid_count - 1; i++) {
+        for (int j = 0; j < valid_count - i - 1; j++) {
+            if (valid_records[j].Id > valid_records[j + 1].Id) {
+                Record temp = valid_records[j];
+                valid_records[j] = valid_records[j + 1];
+                valid_records[j + 1] = temp;
+            }
+        }
+    }
+
+    // Calculate new number of blocks needed
+    int new_num_blocks = (valid_count + blocking_fact - 1) / blocking_fact;
+    
+    // Rewrite blocks with compacted data
+    int record_idx = 0;
+    for (int i = 0; i < new_num_blocks; i++) {
+        memset(&buffer, 0, sizeof(Block));  // Clear buffer
+        buffer.nbrecord = 0;
+        
+        // Fill block with records
+        while (buffer.nbrecord < blocking_fact && record_idx < valid_count) {
+            buffer.tab[buffer.nbrecord++] = valid_records[record_idx++];
+        }
+        
+        // Write block back to file
+        WriteBlock(F, first_block + i, &buffer);
+    }
+
+    // Update metadata
+    write_metadata(pos_meta, 2, md, new_num_blocks);  // Update number of blocks
+    write_metadata(pos_meta, 3, md, valid_count);     // Update number of records
+
+    // Mark any remaining blocks as free in allocation table
+    AllocationTable table;
+    ReadAllocationTable(&table, F);
+    
+    // Mark used blocks
+    for (int i = first_block; i < first_block + new_num_blocks; i++) {
+        table.arrays[i] = 1;  // Mark as used
+    }
+    
+    // Mark freed blocks
+    for (int i = first_block + new_num_blocks; i <= last_block; i++) {
+        table.arrays[i] = 0;  // Mark as free
+    }
+    
+    // Write updated allocation table
+    rewind(F);
+    fwrite(&table, sizeof(AllocationTable), 1, F);
+
+    // Clean up
+    free(valid_records);
+    
+    printf("File reorganized: %d records compacted into %d blocks\n", 
+           valid_count, new_num_blocks);
 }
