@@ -14,7 +14,7 @@ void TNOF_InitliazeFile(FILE *F, FILE* MD, const char* filename, int Nrecords, A
     ReadAllocationTable(table, F);
     printf("MD file pointer: %p\n", (void*)MD);
 
-    int blocks_needed = (int)(Nrecords / blocking_fact) + 1;
+    int blocks_needed = (Nrecords + blocking_fact - 1) / blocking_fact;
     printf("--------- init\n ");
     printf("%d", blocks_needed);
     printf("--------- init\n ");
@@ -196,6 +196,12 @@ void TNOF_InsertRecord(FILE* F, FILE* MD, const char* filename, Record e, Alloca
 
 // Search for a record in the TNOF file
 coords TNOF_SearchRecord(FILE* F, FILE* MD, const char* filename, int id) {
+    rewind(F);
+    rewind(MD);
+    fflush(stdout);
+    printf("SEARCHI G");
+
+    printf("ID %d", id);
     int pos = search_metadata(filename, MD);
     Block buffer;
     buffer.tab = (Record*)malloc(blocking_fact * sizeof(Record)); // Allocate memory for records
@@ -212,12 +218,13 @@ coords TNOF_SearchRecord(FILE* F, FILE* MD, const char* filename, int id) {
 
     int fb = read_metadata(pos, 1, MD); // First address
     int nb = read_metadata(pos, 2, MD); // Number of blocks
-    fseek(F, sizeof(Block) * (fb - 1) + sizeof(AllocationTable), SEEK_SET);
+    fseek(F, sizeof(buffer) * (fb - 1) + sizeof(AllocationTable), SEEK_SET);
     int j = 0;
 
     while (j < nb && !t.found) {
-        fread(&buffer, sizeof(Block), 1, F);
+        fread(&buffer, sizeof(buffer), 1, F);
         for (int i = 0; i < buffer.nbrecord; ++i) {
+            printf("ID %d", buffer.tab[i].Id);
             if (buffer.tab[i].Id == id) {
                 t.found = true;
                 t.y_record = i;

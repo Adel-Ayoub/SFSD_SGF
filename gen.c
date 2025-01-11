@@ -221,13 +221,14 @@ void write_metadata(int pos, int id , FILE *metadata_file, int new_value){
     fwrite(&buffer, sizeof(Metadata), 1, metadata_file);
 }
 
-void RenameFile(char* oldname, char* newname, FILE* md){
+int RenameFile(char* oldname, char* newname, FILE* md){
+    printf("%s %s", oldname, newname);
     int pos = search_metadata(oldname, md);
-    Metadata* p;
+    Metadata *p = (Metadata *)malloc(sizeof(Metadata));
     Readmeta_FULL(md, p,pos);
     strcpy(p->filename,newname);
-    fseek(md, sizeof(Metadata) * pos, SEEK_SET);
+    fseek(md, sizeof(Metadata) * (pos), SEEK_SET);
     fwrite(p, sizeof(Metadata), 1, md);
-
+    return 1;
 }
 // FILES-----

@@ -230,12 +230,31 @@ void on_delete_record_clicked(GtkToolButton *button, gpointer user_data) {
 
 void on_rename_file_clicked(GtkToolButton *button, gpointer user_data) {
     show_rename_file_dialog(GTK_WIDGET(window));
+    refresh_disk_view();
+    update_file_tree_view();
 }
 
 void on_compact_disk_clicked(GtkToolButton *button, gpointer user_data) {
-    // Placeholder for disk compaction logic
-    gtk_statusbar_push(GTK_STATUSBAR(status_bar), 0, "Disk compacted");
-    gtk_widget_queue_draw(disk_view_drawing_area);
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(
+            GTK_TREE_VIEW(gtk_bin_get_child(GTK_BIN(file_tree_view))));
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+
+    if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+        gchar *filename;
+        gtk_tree_model_get(model, &iter, 0, &filename, -1);
+
+        TNOF_Reorganize(filename, mainStorage, metadataFile);
+
+        refresh_disk_view();
+        update_file_tree_view();
+
+        g_free(filename);
+
+        show_success_dialog(GTK_WIDGET(window), "File compacted successfully");
+    } else {
+        show_error_dialog(GTK_WIDGET(window), "Please select a file to compact");
+    }
 }
 
 void on_clear_disk_clicked(GtkToolButton *button, gpointer user_data) {
@@ -261,35 +280,62 @@ void show_search_record_dialog(GtkWidget *parent) {
         show_error_dialog(parent, "Please initialize disk first");
         return;
     }
-    SearchRecordDialog dialog;
 
+    SearchRecordDialog dialog;
     dialog.dialog = gtk_dialog_new_with_buttons("Search Record",
                                                 GTK_WINDOW(parent),
                                                 GTK_DIALOG_MODAL,
-                                                "Cancel",
-                                                GTK_RESPONSE_CANCEL,
-                                                "Search",
-                                                GTK_RESPONSE_ACCEPT,
+                                                "Cancel", GTK_RESPONSE_CANCEL,
+                                                "Search", GTK_RESPONSE_ACCEPT,
                                                 NULL);
 
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog.dialog));
     GtkWidget *grid = gtk_grid_new();
     gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
-    gtk_grid_set_row_spacing(GTK_GRID(grid), 5);
-    gtk_grid_set_column_spacing(GTK_GRID(grid), 5);
-
-    // File selection
+    gtk_entry_set_text(GTK_ENTRY(dialog.id_entry), ""); // Clear text field
+    // File selection combo
     GtkWidget *file_label = gtk_label_new("Select file:");
     dialog.file_combo = gtk_combo_box_text_new();
-    // Populate with existing files (placeholder)
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialog.file_combo), "File1");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialog.file_combo), "File2");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(dialog.file_combo), 0);
 
-    // Record ID
+    // Populate combo box with existing files
+    rewind(metadataFile);
+    Metadata meta;
+    while (fread(&meta, sizeof(Metadata), 1, metadataFile) == 1) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(dialog.file_combo), meta.filename);
+    }
+
+    // Get selected file from tree view if any
+    GtkTreeSelection *selection = gtk_tree_view_get_selection(GTK_TREE_VIEW(gtk_bin_get_child(GTK_BIN(file_tree_view))));
+    GtkTreeModel *model;
+    GtkTreeIter iter;
+    if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+        gchar *filename;
+        gtk_tree_model_get(model, &iter, 0, &filename, -1);
+        // Find and select this file in the combo box
+        GtkTreeModel *combo_model = gtk_combo_box_get_model(GTK_COMBO_BOX(dialog.file_combo));
+        GtkTreeIter combo_iter;
+        gboolean valid = gtk_tree_model_get_iter_first(combo_model, &combo_iter);
+        int index = 0;
+        while (valid) {
+            gchar *current;
+            gtk_tree_model_get(combo_model, &combo_iter, 0, &current, -1);
+            if (g_strcmp0(current, filename) == 0) {
+                gtk_combo_box_set_active(GTK_COMBO_BOX(dialog.file_combo), index);
+                g_free(current);
+                break;
+            }
+            g_free(current);
+            valid = gtk_tree_model_iter_next(combo_model, &combo_iter);
+            index++;
+        }
+        g_free(filename);
+    }
+
+    // Record ID entry
     GtkWidget *id_label = gtk_label_new("Record ID:");
     dialog.id_entry = gtk_entry_new();
 
+    // Add widgets to grid
     gtk_grid_attach(GTK_GRID(grid), file_label, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), dialog.file_combo, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), id_label, 0, 1, 1, 1);
@@ -302,36 +348,47 @@ void show_search_record_dialog(GtkWidget *parent) {
     if (result == GTK_RESPONSE_ACCEPT) {
         const char* filename = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(dialog.file_combo));
         const char* id_text = gtk_entry_get_text(GTK_ENTRY(dialog.id_entry));
+        printf("ID Text from Entry: '%s'\n", id_text); // Debugging
+
         int record_id = atoi(id_text);
-        Record e;
-        e.Id = record_id;
-        e.deleted = 0;
-
-        int meta_pos = search_metadata(filename, metadataFile);
-        if (meta_pos >= 0) {
-            Metadata meta;
-            Readmeta_FULL(metadataFile, &meta, meta_pos);
-
-            if (meta.global_organs == 1 && meta.inter_organs == 1) {
-//                orgType = "LOF";
-            } else if (meta.global_organs == 1 && meta.inter_organs == 0) {
-//                orgType = "LNOF";
-            } else if (meta.global_organs == 0 && meta.inter_organs == 1) {
-//                orgType = "TOF";
-            } else{
-                TNOF_InsertRecord(mainStorage, metadataFile, filename, e, currentTable);
+        if (filename && id_text) {
+            printf("Converted Record ID: %d\n", record_id); // Debugging
 
 
+
+            int meta_pos = search_metadata(filename, metadataFile);
+            printf("Converted Record ID: %d\n", record_id); // Debugging
+
+            if (meta_pos >= 0) {
+                Metadata meta;
+                Readmeta_FULL(metadataFile, &meta, meta_pos);
+
+                // Search based on organization type
+                coords result;
+                if (meta.global_organs == 0 && meta.inter_organs == 0) {
+                    printf("Converted STARTTT\n"); // Debugging
+
+                    printf("%s", filename);
+                    result = TNOF_SearchRecord(mainStorage, metadataFile, filename,record_id);
+                    printf("%d %d", result.y_record, result.x_block);
+                    if (result.found) {
+                        char msg[256];
+                        snprintf(msg, sizeof(msg), "Record found at block %d and record num %d", result.x_block, result.y_record);
+                        show_success_dialog(parent, msg);
+                    } else {
+                        show_error_dialog(parent, "Record not found bruh");
+                    }
+                }
+                // Add other organization types here
+
+                refresh_disk_view();
+                update_file_tree_view();
             }
-
-        } else {
-            show_error_dialog(parent, "File not found");
         }
     }
 
     gtk_widget_destroy(dialog.dialog);
 }
-
 void show_insert_record_dialog(GtkWidget *parent) {
     // Similar to search dialog but with fields for record data
     GtkWidget *dialog = gtk_message_dialog_new(GTK_WINDOW(parent),
@@ -353,17 +410,18 @@ void show_delete_record_dialog(GtkWidget *parent) {
     gtk_dialog_run(GTK_DIALOG(dialog));
     gtk_widget_destroy(dialog);
 }
-
 void show_rename_file_dialog(GtkWidget *parent) {
-    GtkWidget *dialog = gtk_dialog_new_with_buttons("Rename File",
-                                                    GTK_WINDOW(parent),
-                                                    GTK_DIALOG_MODAL,
-                                                    "Cancel",
-                                                    GTK_RESPONSE_CANCEL,
-                                                    "Rename",
-                                                    GTK_RESPONSE_ACCEPT,
-                                                    NULL);
+    // Create dialog
+    GtkWidget *dialog = gtk_dialog_new_with_buttons(
+            "Rename File",
+            GTK_WINDOW(parent),
+            GTK_DIALOG_MODAL,
+            "Cancel", GTK_RESPONSE_CANCEL,
+            "Rename", GTK_RESPONSE_ACCEPT,
+            NULL
+    );
 
+    // Create content area and grid
     GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
     GtkWidget *grid = gtk_grid_new();
     gtk_container_set_border_width(GTK_CONTAINER(grid), 10);
@@ -371,14 +429,19 @@ void show_rename_file_dialog(GtkWidget *parent) {
     // File selection combo box
     GtkWidget *file_label = gtk_label_new("Select file:");
     GtkWidget *file_combo = gtk_combo_box_text_new();
-    // Populate with existing files (placeholder)
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(file_combo), "File1");
-    gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(file_combo), "File2");
+
+    // Populate combo box with existing files
+    rewind(metadataFile);
+    Metadata meta;
+    while (fread(&meta, sizeof(Metadata), 1, metadataFile) == 1) {
+        gtk_combo_box_text_append_text(GTK_COMBO_BOX_TEXT(file_combo), meta.filename);
+    }
 
     // New name entry
     GtkWidget *name_label = gtk_label_new("New name:");
     GtkWidget *name_entry = gtk_entry_new();
 
+    // Add widgets to the grid
     gtk_grid_attach(GTK_GRID(grid), file_label, 0, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), file_combo, 1, 0, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), name_label, 0, 1, 1, 1);
@@ -387,15 +450,123 @@ void show_rename_file_dialog(GtkWidget *parent) {
     gtk_container_add(GTK_CONTAINER(content_area), grid);
     gtk_widget_show_all(dialog);
 
+    // Run dialog and handle response
     gint result = gtk_dialog_run(GTK_DIALOG(dialog));
     if (result == GTK_RESPONSE_ACCEPT) {
-        // Placeholder for rename logic
-        gtk_statusbar_push(GTK_STATUSBAR(status_bar), 0, "File renamed");
+        const char *selected_file = gtk_combo_box_text_get_active_text(GTK_COMBO_BOX_TEXT(file_combo));
+        const char *new_name = gtk_entry_get_text(GTK_ENTRY(name_entry));
+
+        // Validate input
+        if (!selected_file || strlen(selected_file) == 0) {
+            show_error_dialog(parent, "Please select a file.");
+        } else if (!new_name || strlen(new_name) == 0) {
+            show_error_dialog(parent, "Please enter a new name.");
+        } else {
+            // Perform rename operation
+            if (RenameFile(selected_file, new_name, metadataFile)) {
+                gtk_statusbar_push(GTK_STATUSBAR(status_bar), 0, "File renamed successfully.");
+            } else {
+                show_error_dialog(parent, "Failed to rename the file.");
+            }
+        }
     }
 
+    // Clean up
     gtk_widget_destroy(dialog);
 }
-
+//void show_all_records_dialog(GtkWidget *parent) {
+//    if (!disk_initialized) {
+//        show_error_dialog(parent, "Please initialize disk first");
+//        return;
+//    }
+//
+//    GtkWidget *dialog = gtk_dialog_new_with_buttons("All Records",
+//                                                    GTK_WINDOW(parent),
+//                                                    GTK_DIALOG_MODAL,
+//                                                    "Close",
+//                                                    GTK_RESPONSE_CLOSE,
+//                                                    NULL);
+//
+//    // Create scrolled window
+//    GtkWidget *content_area = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+//    GtkWidget *scroll = gtk_scrolled_window_new(NULL, NULL);
+//    gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scroll),
+//                                   GTK_POLICY_AUTOMATIC,
+//                                   GTK_POLICY_AUTOMATIC);
+//
+//    // Create tree view
+//    GtkListStore *store = gtk_list_store_new(3, G_TYPE_INT, G_TYPE_STRING, G_TYPE_BOOLEAN);
+//    GtkWidget *tree = gtk_tree_view_new_with_model(GTK_TREE_MODEL(store));
+//
+//    // Add columns
+//    GtkCellRenderer *renderer = gtk_cell_renderer_text_new();
+//    gtk_tree_view_append_column(GTK_TREE_VIEW(tree),
+//                                gtk_tree_view_column_new_with_attributes("ID",
+//                                                                         renderer,
+//                                                                         "text", 0,
+//                                                                         NULL));
+//
+//    renderer = gtk_cell_renderer_text_new();
+//    gtk_tree_view_append_column(GTK_TREE_VIEW(tree),
+//                                gtk_tree_view_column_new_with_attributes("Content",
+//                                                                         renderer,
+//                                                                         "text", 1,
+//                                                                         NULL));
+//
+//    renderer = gtk_cell_renderer_toggle_new();
+//    gtk_tree_view_append_column(GTK_TREE_VIEW(tree),
+//                                gtk_tree_view_column_new_with_attributes("Deleted",
+//                                                                         renderer,
+//                                                                         "active", 2,
+//                                                                         NULL));
+//
+//    // Get selected file and show records
+//    GtkTreeSelection *selection = gtk_tree_view_get_selection(
+//            GTK_TREE_VIEW(gtk_bin_get_child(GTK_BIN(file_tree_view))));
+//    GtkTreeModel *model;
+//    GtkTreeIter iter;
+//
+//    if (gtk_tree_selection_get_selected(selection, &model, &iter)) {
+//        gchar *filename;
+//        gtk_tree_model_get(model, &iter, 0, &filename, -1);
+//
+//        // Read records and populate tree view
+//        int meta_pos = search_metadata(filename, metadataFile);
+//        if (meta_pos >= 0) {
+//            Metadata meta;
+//            Readmeta_FULL(metadataFile, &meta, meta_pos);
+//            Block current_block;
+//            current_block.tab =  (Record*)malloc(blocking_fact * sizeof(Record)); // Allocate memory for records
+//
+//            fseek(mainStorage, sizeof(current_block) * (meta.Firstblock + meta.nBlocks), SEEK_SET);
+//            for (int block = 0; block < meta.nBlocks; block++) {
+//                Block current_block;
+//                ReadBlock(mainStorage, *t_block, block);
+//
+//                for (int i = 0; i < blocking_fact; i++) {
+//                    Record *record = ¤t_block.records[i];
+//                    GtkTreeIter list_iter;
+//                    gtk_list_store_append(store, &list_iter);
+//                    gtk_list_store_set(store, &list_iter,
+//                                       0, record->id,
+//                                       1, record->content,
+//                                       2, record->is_deleted,
+//                                       -1);
+//                }
+//            }
+//        }
+//        g_free(filename);
+//    }
+//
+//    // Show dialog
+//    gtk_container_add(GTK_CONTAINER(scroll), tree);
+//    gtk_widget_set_size_request(scroll, 400, 300);
+//    gtk_container_add(GTK_CONTAINER(content_area), scroll);
+//    gtk_widget_show_all(dialog);
+//
+//    gtk_dialog_run(GTK_DIALOG(dialog));
+//    gtk_widget_destroy(dialog);
+//}
 // Create the main toolbar
 GtkWidget *create_toolbar() {
     GtkWidget *toolbar = gtk_toolbar_new();
@@ -432,10 +603,14 @@ GtkWidget *create_toolbar() {
     g_signal_connect(rename_button, "clicked", G_CALLBACK(on_rename_file_clicked), NULL);
 
     // Compact Disk
-    GtkToolItem *compact_button = gtk_tool_button_new(NULL, "Compact");
+    GtkToolItem *compact_button = gtk_tool_button_new(NULL, "Compact File");
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), compact_button, -1);
     g_signal_connect(compact_button, "clicked", G_CALLBACK(on_compact_disk_clicked), NULL);
 
+// Add a toolbar button for show all records functionality
+    GtkToolItem *records_button = gtk_tool_button_new(NULL, "Show Records");
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), records_button, -1);
+//    g_signal_connect(records_button, "clicked", G_CALLBACK(show_all_records_dialog), NULL);
     // Clear Disk
     GtkToolItem *clear_button = gtk_tool_button_new(NULL, "Clear");
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), clear_button, -1);
@@ -579,17 +754,13 @@ void show_init_disk_dialog(GtkWidget *parent) {
             fclose(metadataFile);
             metadataFile = NULL;
         }
-        if (currentTable) {
-            free(currentTable);
-            currentTable = NULL;
-        }
 
-        // Create new files with explicit binary mode
+        // Create new files with proper permissions
         mainStorage = fopen("storage.bin", "wb+");
         metadataFile = fopen("metadata.bin", "wb+");
 
         if (!mainStorage || !metadataFile) {
-            show_error_dialog(parent, "Failed to create storage files");
+            show_error_dialog(parent, "Failed to create storage files. Check permissions.");
             if (mainStorage) fclose(mainStorage);
             if (metadataFile) fclose(metadataFile);
             mainStorage = metadataFile = NULL;
@@ -597,27 +768,23 @@ void show_init_disk_dialog(GtkWidget *parent) {
             return;
         }
 
-        // Initialize the allocation table
-        currentTable = initAllocationTable();
-        if (!currentTable) {
-            show_error_dialog(parent, "Failed to initialize allocation table");
-            fclose(mainStorage);
-            fclose(metadataFile);
-            mainStorage = metadataFile = NULL;
-            gtk_widget_destroy(dialog.dialog);
-            return;
+        // Initialize files with zero bytes
+        char zero = 0;
+        for (int i = 0; i < num_of_blocks * blocking_fact * sizeof(Record); i++) {
+            fwrite(&zero, 1, 1, mainStorage);
         }
-
-        // Write the allocation table and flush the files
-        WriteAllocationTable(currentTable, mainStorage);
         fflush(mainStorage);
-        fflush(metadataFile);
 
-        show_success_dialog(parent, "Disk initialized successfully");
+        // Initialize allocation table
+        currentTable = initAllocationTable();
+        WriteAllocationTable(currentTable, mainStorage);
+
+        disk_initialized = TRUE;
         refresh_disk_view();
         update_file_tree_view();
-    }
 
+        show_success_dialog(parent, "Disk initialized successfully");
+    }
     gtk_widget_destroy(dialog.dialog);
 }
 // Function to create and show the create file dialog

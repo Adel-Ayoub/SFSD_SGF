@@ -57,7 +57,7 @@ typedef struct {
 // File Operations
 void CreateFile(char* filename, int organization);  // Create a new file
 void DeleteFile(char* filename);                    // Delete a file
-void RenameFile(char* oldname, char* newname, FILE* md);
+int RenameFile(char* oldname, char* newname, FILE* md);
 
 // Metadata Operations
 int search_metadata(const char* file_name, FILE *ms);       // Search for metadata by file name
