@@ -8,9 +8,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "stdbool.h"
+#include <string.h>
 // Constants
-#define num_of_blocks 12    // Total number of blocks
-#define blocking_fact 2     // Blocking factor (number of records per block)
+#define num_of_blocks 200    // Total number of blocks
+#define blocking_fact 4     // Blocking factor (number of records per block)
 
 // Record Structure
 typedef struct record {
@@ -65,30 +66,32 @@ void DeleteFile(char* filename);                    // Delete a file
 void RenameFile(char* oldname, char* newname);      // Rename a file
 
 // Metadata Operations
-int search_metadata(const char* file_name, FILE *ms);       // Search for metadata by file name
+int search_metadata(const char* file_name, FILE *md);       // Search for metadata by file name
 int read_metadata(int pos, int id, FILE *ms);               // Read metadata at a specific position
 void write_metadata(int pos, int id, FILE *ms, int new_value); // Write metadata value
-
+void printMetadata(FILE* MD, const char* filename);
 // Helper Functions
 void traverse_defBlocks(FILE *ms); // Traverse and display default blocks
 
 // Allocation Table Operations
 AllocationTable* initAllocationTable();
 void ReadAllocationTable(AllocationTable *t , FILE *ms);
-void setBlockStatus(FILE* F,int blockNum, int status); // Set block status (free/occupied)
+void WriteAllocationTable(AllocationTable *t , FILE *ms);
 int getBlockStatus(AllocationTable *t, int blockNum);
 int findFreeBlocks_sequential(AllocationTable *t, int nBlocks);   // Find n consecutive free blocks
 int* findFreeBlocks_list(AllocationTable *t, int nBlocks);  // Find n free blocks (non-sequential)
 void displayAllocationTable(AllocationTable *t);           // Display allocation table status
-
+void printALLOCATION(AllocationTable* t);
 // Block Operations
 void displayBlock(BlockP R);  // Display a block's contents
 void ReadBlock(FILE* ms, int i, Block* buffer);
 void WriteBlock(FILE* F, int i, Block* buffer);
-
+void printBlockContents(FILE* F, int blockNum);
+void printBlock(BlockP R);
+void setBlockStatus(FILE* F,int blockNum, int status,AllocationTable* t);
 // Record Operations
 void printRecord(RecordP R);      // Display a record
 void CopyRecord(RecordP R1, RecordP R2); // Copy a record
 void createRecord(RecordP R);     // Create a record (read information)
-
+void ReadStorageFile(FILE* F);
 #endif // SRC_GEN_H
