@@ -14,9 +14,9 @@ int LNOF_InitializeFile(FILE *F, FILE* MD,const char* filename,int Nrecords,Allo
     printf("--------- init\n ");
 	
 	int* blocks=findFreeBlocks_list(table, blocks_needed);
-	for(int i=0;i<blocks_needed;i++){
+	/*for(int i=0;i<blocks_needed;i++){
 		printf("free blocks %d !!!!!\n",blocks[i]);
-	}
+	}*/
     
     if (blocks == NULL) {
         printf("Not enough blocks sorry\n");
@@ -24,7 +24,7 @@ int LNOF_InitializeFile(FILE *F, FILE* MD,const char* filename,int Nrecords,Allo
     }
     int first_adresss=blocks[0];
     
-    printf("first adress %d\n", first_adresss);
+    //printf("first adress %d\n", first_adresss);
     Metadata p;
     strcpy(p.filename, filename);
     p.inter_organs = 0;
@@ -34,7 +34,7 @@ int LNOF_InitializeFile(FILE *F, FILE* MD,const char* filename,int Nrecords,Allo
     p.nBlocks = blocks_needed;
 
     
-    printf("Okay creating file \n");
+    printf("Okay creating file ");
     printf("%s\n", p.filename);
     
     fseek(MD, 0, SEEK_END);
@@ -93,10 +93,9 @@ coords LNOF_SearchRecord(FILE* F,FILE *md ,const char* filename ,int id)//blockp
     }
 	int posb=read_metadata(b,1,md);//read firstblock position from metadata
 	int numb=read_metadata(b,2,md);
-	Block buffer;
-	
+	printf("numb in md %d !!!!!!!!!!!!!!\n",numb);
 	result.found=false;
-
+	Block buffer;
 	ReadBlock(F, posb, &buffer);
 	int c=0;
 	while(c<numb&& result.x_block!=-1) //traversing the block table until finding the block or end of List
@@ -113,10 +112,13 @@ coords LNOF_SearchRecord(FILE* F,FILE *md ,const char* filename ,int id)//blockp
 				}
 			if(buffer.next==-1)
 				{
+					printf("c at the end%d !!!!!!!!\n",c);
 					return result;
 				}
 			result.x_block=buffer.next;
+			printf("num block %d, next %d\n",c,buffer.next);
 			ReadBlock(F, buffer.next, &buffer);
+			
 			c++;
 		}
 };
@@ -132,42 +134,51 @@ int LNOF_InsertRecord(FILE* F, FILE* md,const char* filename, Record e,Allocatio
 	int numb=read_metadata(pos_m,2,md);
 	printf("first block pos %d !!!\n",firstb);
 	Block buffer;
-	
+	Record def;
+	def.Id=0;
+	def.deleted=1;
 	// Allocate memory for records
-    fseek(F, sizeof(AllocationTable) + (firstb * sizeof(Block)), SEEK_SET);
-	int i=0;
-	fread(&buffer,sizeof(Block),1,F);
+	int i=0;                      
+	ReadBlock(F, firstb, &buffer);
+	int currpos=firstb;
 	while(i<numb){//traverse all the file searching for a place to put record
 		if(buffer.nbrecord==blocking_fact){//if current bloc full
 			if(buffer.next==-1){//end of file (all blocs are full) add a new bloc
 				
 				int blocpos= findFreeBlocks_list(table,1)[0];//get pos for a new bloc
 				buffer.next=blocpos;//link the last bloc to the new bloc
+				WriteBlock(F, currpos, &buffer);
+				printf("bloc pos %d !!!!!!!!!!!\n",blocpos);
 				printf("inserting new block at %d!!!!!!!!\n",blocpos);
 				buffer.nbrecord=1;//filling the new bloc
 				buffer.tab[0]=e;//filling the new bloc
+				buffer.tab[1]=def;
+				buffer.tab[2]=def;
+				buffer.tab[3]=def;
 				buffer.next=-1;//filling the new bloc
-				fseek(F,sizeof(AllocationTable)+26*sizeof(Block),SEEK_SET);
-				fwrite(&buffer, sizeof(Block), 1, F);//parse the data to the bloc
-				write_metadata(pos_m,2,md,i);
-				setBlockStatus(F,blocpos,1,table);//set the new bloc to allocated in allocation table
+				WriteBlock(F, blocpos, &buffer);
+				write_metadata(pos_m,2,md,numb+1);
+				write_metadata(pos_m,3,md,(numb*4)+1);
+				setBlockStatus(F,blocpos,1,table);
 				return 0;
 			}
+			printBlockContents(F,i);
+			currpos=buffer.next;
 			ReadBlock(F,buffer.next,&buffer);
-			i++;//reach here if there are more blocs in the file to check
+			
+			i++;
 			continue;
-		};
-		for(int i=0;i<blocking_fact;i++){
-			if(buffer.tab[i].deleted==1){
-				buffer.tab[i]=e;
+		}
+			for(int j=0;i<blocking_fact;i++){  //set the new bloc to allocated in allocation table
+			if(buffer.tab[j].deleted==1){
+				buffer.tab[j]=e;
 				buffer.nbrecord++;
 				return 0;
 			}
-		}
-		return 1;
-	}
-}
-
+		}                         
+		return -1;
+	};
+};
 void LNOF_SuppressionLogique(FILE* F, FILE* md ,const char* filename, int id)
 {
 	coords recordcords=LNOF_SearchRecord(F,md,filename,id);
@@ -259,5 +270,5 @@ void LNOF_reorgenize(FILE* F, FILE* md ,const char* filename){
 		};
 		ReadBlock(F,buffer.next,&buffer);
 	};
-};
+}
 
